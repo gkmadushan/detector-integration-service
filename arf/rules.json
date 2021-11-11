@@ -1,0 +1,716 @@
+{
+	"xccdf_org.ssgproject.content_rule_audit_rules_unsuccessful_file_modification_creat-31_10_2021-03_32_36": {
+		"node_id": "xccdf_org.ssgproject.content_rule_audit_rules_unsuccessful_file_modification_creat",
+		"type": "operator",
+		"value": "and",
+		"negation": false,
+		"comment": "Record Unsuccessful Access Attempts to Files - creat",
+		"tag": "Rule",
+		"test_result_details": null,
+		"child": [
+			{
+				"node_id": "oval:ssg-audit_rules_unsuccessful_file_modification_creat:def:1",
+				"type": "operator",
+				"value": "or",
+				"negation": false,
+				"comment": "Audit rules about the unauthorized access attempts to files (unsuccessful) are enabled.",
+				"tag": "Definition",
+				"test_result_details": null,
+				"child": [
+					{
+						"node_id": "a9e5558a-6842-4964-a771-df3858630db6",
+						"type": "operator",
+						"value": "and",
+						"negation": false,
+						"comment": null,
+						"tag": "Criteria",
+						"test_result_details": null,
+						"child": [
+							{
+								"node_id": "e069634b-bd3c-46b0-a497-785a03d2e8d7",
+								"type": "operator",
+								"value": "and",
+								"negation": false,
+								"comment": "audit augenrules",
+								"tag": "Extend definition",
+								"test_result_details": null,
+								"child": [
+									{
+										"node_id": "oval:ssg-test_audit_rules_augenrules:tst:1",
+										"type": "value",
+										"value": "true",
+										"negation": false,
+										"comment": "audit augenrules",
+										"tag": "Test",
+										"test_result_details": {
+											"id": "oval:ssg-test_audit_rules_augenrules:tst:1",
+											"comment": "audit augenrules",
+											"objects": [
+												{
+													"oval:ssg-object_audit_rules_augenrules:obj:1": "complete",
+													"textfilecontent54_object": {
+														"filepath": "/usr/lib/systemd/system/auditd.service",
+														"path": "/usr/lib/systemd/system",
+														"filename": "auditd.service",
+														"pattern": "^ExecStartPost=\\-\\/sbin\\/augenrules.*$",
+														"instance": "1",
+														"line": "^ExecStartPost=\\-\\/sbin\\/augenrules.*$",
+														"text": "ExecStartPost=-/sbin/augenrules --load"
+													}
+												}
+											]
+										},
+										"child": null
+									}
+								]
+							},
+							{
+								"node_id": "oval:ssg-test_32bit_arufm_eacces_creat_augenrules:tst:1",
+								"type": "value",
+								"value": "false",
+								"negation": false,
+								"comment": "audit augenrules 32-bit file eacces",
+								"tag": "Test",
+								"test_result_details": {
+									"id": "oval:ssg-test_32bit_arufm_eacces_creat_augenrules:tst:1",
+									"comment": "audit augenrules 32-bit file eacces",
+									"objects": [
+										{
+											"oval:ssg-object_32bit_arufm_eacces_creat_augenrules:obj:1": "does not exist",
+											"textfilecontent54_object": {
+												"filepath": "^/etc/audit/rules\\.d/.*\\.rules$",
+												"pattern": "^[\\s]*-a[\\s]+always,exit[\\s]+(?:-F[\\s]+arch=b32[\\s]+)(?:.*(-S[\\s]+creat[\\s]+|([\\s]+|[,])creat([\\s]+|[,])))(?:(?!-F[\\s]+a\\d&).)*(?:-F\\s+exit=-EACCES)[\\s]+(?:-F\\s+auid>=1000[\\s]+)(?:-F\\s+auid!=(unset|4294967295)[\\s]+)(?:-k[\\s]+|-F[\\s]+key=)[\\S]+[\\s]*$",
+												"instance": "1"
+											}
+										}
+									]
+								},
+								"child": null
+							},
+							{
+								"node_id": "oval:ssg-test_32bit_arufm_eperm_creat_augenrules:tst:1",
+								"type": "value",
+								"value": "false",
+								"negation": false,
+								"comment": "audit augenrules 32-bit file eperm",
+								"tag": "Test",
+								"test_result_details": {
+									"id": "oval:ssg-test_32bit_arufm_eperm_creat_augenrules:tst:1",
+									"comment": "audit augenrules 32-bit file eperm",
+									"objects": [
+										{
+											"oval:ssg-object_32bit_arufm_eperm_creat_augenrules:obj:1": "does not exist",
+											"textfilecontent54_object": {
+												"filepath": "^/etc/audit/rules\\.d/.*\\.rules$",
+												"pattern": "^[\\s]*-a[\\s]+always,exit[\\s]+(?:-F[\\s]+arch=b32[\\s]+)(?:.*(-S[\\s]+creat[\\s]+|([\\s]+|[,])creat([\\s]+|[,])))(?:(?!-F[\\s]+a\\d&).)*(?:-F\\s+exit=-EPERM)[\\s]+(?:-F\\s+auid>=1000[\\s]+)(?:-F\\s+auid!=(unset|4294967295)[\\s]+)(?:-k[\\s]+|-F[\\s]+key=)[\\S]+[\\s]*$",
+												"instance": "1"
+											}
+										}
+									]
+								},
+								"child": null
+							},
+							{
+								"node_id": "74f02de4-aea8-4049-a4dd-7e93a5a8dd03",
+								"type": "operator",
+								"value": "or",
+								"negation": false,
+								"comment": null,
+								"tag": "Criteria",
+								"test_result_details": null,
+								"child": [
+									{
+										"node_id": "9977eb26-60d4-4ed1-8425-c61d56f35ece",
+										"type": "operator",
+										"value": "or",
+										"negation": true,
+										"comment": "64-bit system",
+										"tag": "Extend definition",
+										"test_result_details": null,
+										"child": [
+											{
+												"node_id": "0b024b1c-e867-41a9-8664-053bd911f59c",
+												"type": "operator",
+												"value": "and",
+												"negation": false,
+												"comment": "Generic test for x86_64 architecture",
+												"tag": "Extend definition",
+												"test_result_details": null,
+												"child": [
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_x86_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for x86_64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_x86_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_x86_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													}
+												]
+											},
+											{
+												"node_id": "4ac88f68-900c-44f1-a4ab-e1bfb9f06ba6",
+												"type": "operator",
+												"value": "or",
+												"negation": false,
+												"comment": "Generic test for ppc64 architecture",
+												"tag": "Extend definition",
+												"test_result_details": null,
+												"child": [
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_ppc_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for ppc64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_ppc_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_ppc_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													},
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_ppcle_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for ppcle64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_ppcle_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_ppcle_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													}
+												]
+											},
+											{
+												"node_id": "1a941827-4cc5-43c9-822a-265967d434eb",
+												"type": "operator",
+												"value": "and",
+												"negation": false,
+												"comment": "Generic test for aarch64 architecture",
+												"tag": "Extend definition",
+												"test_result_details": null,
+												"child": [
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_aarch_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for aarch_64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_aarch_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_aarch_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													}
+												]
+											},
+											{
+												"node_id": "a5ec5764-0763-475d-9dc7-bfca9691a038",
+												"type": "operator",
+												"value": "and",
+												"negation": false,
+												"comment": "Generic test for s390x architecture",
+												"tag": "Extend definition",
+												"test_result_details": null,
+												"child": [
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_s390_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for s390_64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_s390_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_s390_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													}
+												]
+											}
+										]
+									},
+									{
+										"node_id": "c7bbaecf-1d11-4286-a268-cfbe64169715",
+										"type": "operator",
+										"value": "and",
+										"negation": false,
+										"comment": null,
+										"tag": "Criteria",
+										"test_result_details": null,
+										"child": [
+											{
+												"node_id": "oval:ssg-test_64bit_arufm_eacces_creat_augenrules:tst:1",
+												"type": "value",
+												"value": "false",
+												"negation": false,
+												"comment": "audit augenrules 64-bit file eacces",
+												"tag": "Test",
+												"test_result_details": {
+													"id": "oval:ssg-test_64bit_arufm_eacces_creat_augenrules:tst:1",
+													"comment": "audit augenrules 64-bit file eacces",
+													"objects": [
+														{
+															"oval:ssg-object_64bit_arufm_eacces_creat_augenrules:obj:1": "does not exist",
+															"textfilecontent54_object": {
+																"filepath": "^/etc/audit/rules\\.d/.*\\.rules$",
+																"pattern": "^[\\s]*-a[\\s]+always,exit[\\s]+(?:-F[\\s]+arch=b64[\\s]+)(?:.*(-S[\\s]+creat[\\s]+|([\\s]+|[,])creat([\\s]+|[,])))(?:(?!-F[\\s]+a\\d&).)*(?:-F\\s+exit=-EACCES)[\\s]+(?:-F\\s+auid>=1000[\\s]+)(?:-F\\s+auid!=(unset|4294967295)[\\s]+)(?:-k[\\s]+|-F[\\s]+key=)[\\S]+[\\s]*$",
+																"instance": "1"
+															}
+														}
+													]
+												},
+												"child": null
+											},
+											{
+												"node_id": "oval:ssg-test_64bit_arufm_eperm_creat_augenrules:tst:1",
+												"type": "value",
+												"value": "false",
+												"negation": false,
+												"comment": "audit augenrules 64-bit file eperm",
+												"tag": "Test",
+												"test_result_details": {
+													"id": "oval:ssg-test_64bit_arufm_eperm_creat_augenrules:tst:1",
+													"comment": "audit augenrules 64-bit file eperm",
+													"objects": [
+														{
+															"oval:ssg-object_64bit_arufm_eperm_creat_augenrules:obj:1": "does not exist",
+															"textfilecontent54_object": {
+																"filepath": "^/etc/audit/rules\\.d/.*\\.rules$",
+																"pattern": "^[\\s]*-a[\\s]+always,exit[\\s]+(?:-F[\\s]+arch=b64[\\s]+)(?:.*(-S[\\s]+creat[\\s]+|([\\s]+|[,])creat([\\s]+|[,])))(?:(?!-F[\\s]+a\\d&).)*(?:-F\\s+exit=-EPERM)[\\s]+(?:-F\\s+auid>=1000[\\s]+)(?:-F\\s+auid!=(unset|4294967295)[\\s]+)(?:-k[\\s]+|-F[\\s]+key=)[\\S]+[\\s]*$",
+																"instance": "1"
+															}
+														}
+													]
+												},
+												"child": null
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"node_id": "15115640-2a4b-4c63-9cc9-543aef4947c3",
+						"type": "operator",
+						"value": "and",
+						"negation": false,
+						"comment": null,
+						"tag": "Criteria",
+						"test_result_details": null,
+						"child": [
+							{
+								"node_id": "11206e8c-81c7-4b1c-a150-35bada37b146",
+								"type": "operator",
+								"value": "and",
+								"negation": false,
+								"comment": "audit auditctl",
+								"tag": "Extend definition",
+								"test_result_details": null,
+								"child": [
+									{
+										"node_id": "oval:ssg-test_audit_rules_auditctl:tst:1",
+										"type": "value",
+										"value": "false",
+										"negation": false,
+										"comment": "audit auditctl",
+										"tag": "Test",
+										"test_result_details": {
+											"id": "oval:ssg-test_audit_rules_auditctl:tst:1",
+											"comment": "audit auditctl",
+											"objects": [
+												{
+													"oval:ssg-object_audit_rules_auditctl:obj:1": "does not exist",
+													"textfilecontent54_object": {
+														"filepath": "/usr/lib/systemd/system/auditd.service",
+														"pattern": "^ExecStartPost=\\-\\/sbin\\/auditctl.*$",
+														"instance": "1"
+													}
+												}
+											]
+										},
+										"child": null
+									}
+								]
+							},
+							{
+								"node_id": "oval:ssg-test_32bit_arufm_eacces_creat_auditctl:tst:1",
+								"type": "value",
+								"value": "false",
+								"negation": false,
+								"comment": "audit auditctl 32-bit file eacces",
+								"tag": "Test",
+								"test_result_details": {
+									"id": "oval:ssg-test_32bit_arufm_eacces_creat_auditctl:tst:1",
+									"comment": "audit auditctl 32-bit file eacces",
+									"objects": [
+										{
+											"oval:ssg-object_32bit_arufm_eacces_creat_auditctl:obj:1": "does not exist",
+											"textfilecontent54_object": {
+												"filepath": "/etc/audit/audit.rules",
+												"pattern": "^[\\s]*-a[\\s]+always,exit[\\s]+(?:-F[\\s]+arch=b32[\\s]+)(?:.*(-S[\\s]+creat[\\s]+|([\\s]+|[,])creat([\\s]+|[,])))(?:(?!-F[\\s]+a\\d&).)*(?:-F\\s+exit=-EACCES)[\\s]+(?:-F\\s+auid>=1000[\\s]+)(?:-F\\s+auid!=(unset|4294967295)[\\s]+)(?:-k[\\s]+|-F[\\s]+key=)[\\S]+[\\s]*$",
+												"instance": "1"
+											}
+										}
+									]
+								},
+								"child": null
+							},
+							{
+								"node_id": "oval:ssg-test_32bit_arufm_eperm_creat_auditctl:tst:1",
+								"type": "value",
+								"value": "false",
+								"negation": false,
+								"comment": "audit auditctl 32-bit file eperm",
+								"tag": "Test",
+								"test_result_details": {
+									"id": "oval:ssg-test_32bit_arufm_eperm_creat_auditctl:tst:1",
+									"comment": "audit auditctl 32-bit file eperm",
+									"objects": [
+										{
+											"oval:ssg-object_32bit_arufm_eperm_creat_auditctl:obj:1": "does not exist",
+											"textfilecontent54_object": {
+												"filepath": "/etc/audit/audit.rules",
+												"pattern": "^[\\s]*-a[\\s]+always,exit[\\s]+(?:-F[\\s]+arch=b32[\\s]+)(?:.*(-S[\\s]+creat[\\s]+|([\\s]+|[,])creat([\\s]+|[,])))(?:(?!-F[\\s]+a\\d&).)*(?:-F\\s+exit=-EPERM)[\\s]+(?:-F\\s+auid>=1000[\\s]+)(?:-F\\s+auid!=(unset|4294967295)[\\s]+)(?:-k[\\s]+|-F[\\s]+key=)[\\S]+[\\s]*$",
+												"instance": "1"
+											}
+										}
+									]
+								},
+								"child": null
+							},
+							{
+								"node_id": "82c821ed-a111-4424-8385-08b9ac780d5b",
+								"type": "operator",
+								"value": "or",
+								"negation": false,
+								"comment": null,
+								"tag": "Criteria",
+								"test_result_details": null,
+								"child": [
+									{
+										"node_id": "c25c34bc-e96e-4f59-b610-e2fd137073dc",
+										"type": "operator",
+										"value": "or",
+										"negation": true,
+										"comment": "64-bit_system",
+										"tag": "Extend definition",
+										"test_result_details": null,
+										"child": [
+											{
+												"node_id": "f4f0b986-6222-4b15-b206-f188ca98a06e",
+												"type": "operator",
+												"value": "and",
+												"negation": false,
+												"comment": "Generic test for x86_64 architecture",
+												"tag": "Extend definition",
+												"test_result_details": null,
+												"child": [
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_x86_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for x86_64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_x86_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_x86_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													}
+												]
+											},
+											{
+												"node_id": "729f6d57-632b-4733-8459-9116e03fee23",
+												"type": "operator",
+												"value": "or",
+												"negation": false,
+												"comment": "Generic test for ppc64 architecture",
+												"tag": "Extend definition",
+												"test_result_details": null,
+												"child": [
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_ppc_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for ppc64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_ppc_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_ppc_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													},
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_ppcle_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for ppcle64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_ppcle_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_ppcle_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													}
+												]
+											},
+											{
+												"node_id": "5632420f-54c6-4b01-8a5e-9c0c761ee7cd",
+												"type": "operator",
+												"value": "and",
+												"negation": false,
+												"comment": "Generic test for aarch64 architecture",
+												"tag": "Extend definition",
+												"test_result_details": null,
+												"child": [
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_aarch_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for aarch_64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_aarch_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_aarch_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													}
+												]
+											},
+											{
+												"node_id": "8e66e4a7-3b97-4c5f-81b9-d81859221bd2",
+												"type": "operator",
+												"value": "and",
+												"negation": false,
+												"comment": "Generic test for s390x architecture",
+												"tag": "Extend definition",
+												"test_result_details": null,
+												"child": [
+													{
+														"node_id": "oval:ssg-test_system_info_architecture_s390_64:tst:1",
+														"type": "value",
+														"value": "false",
+														"negation": false,
+														"comment": "Generic test for s390_64 architecture",
+														"tag": "Test",
+														"test_result_details": {
+															"id": "oval:ssg-test_system_info_architecture_s390_64:tst:1",
+															"comment": "64 bit architecture",
+															"objects": [
+																{
+																	"oval:ssg-object_system_info_architecture_s390_64:obj:1": "complete",
+																	"uname_object": {
+																		"machine_class": "i686",
+																		"node_name": "localhost.localdomain",
+																		"os_name": "Linux",
+																		"os_release": "3.10.0-1160.2.2.el7.centos.plus.i686",
+																		"os_version": "#1 SMP Mon Oct 26 11:56:29 UTC 2020",
+																		"processor_type": "i686"
+																	}
+																}
+															]
+														},
+														"child": null
+													}
+												]
+											}
+										]
+									},
+									{
+										"node_id": "7155b882-e3b2-482d-99bd-01df1aa48576",
+										"type": "operator",
+										"value": "and",
+										"negation": false,
+										"comment": null,
+										"tag": "Criteria",
+										"test_result_details": null,
+										"child": [
+											{
+												"node_id": "oval:ssg-test_64bit_arufm_eacces_creat_auditctl:tst:1",
+												"type": "value",
+												"value": "false",
+												"negation": false,
+												"comment": "audit auditctl 64-bit file eacces",
+												"tag": "Test",
+												"test_result_details": {
+													"id": "oval:ssg-test_64bit_arufm_eacces_creat_auditctl:tst:1",
+													"comment": "audit auditctl 64-bit file eacces",
+													"objects": [
+														{
+															"oval:ssg-object_64bit_arufm_eacces_creat_auditctl:obj:1": "does not exist",
+															"textfilecontent54_object": {
+																"filepath": "/etc/audit/audit.rules",
+																"pattern": "^[\\s]*-a[\\s]+always,exit[\\s]+(?:-F[\\s]+arch=b64[\\s]+)(?:.*(-S[\\s]+creat[\\s]+|([\\s]+|[,])creat([\\s]+|[,])))(?:(?!-F[\\s]+a\\d&).)*(?:-F\\s+exit=-EACCES)[\\s]+(?:-F\\s+auid>=1000[\\s]+)(?:-F\\s+auid!=(unset|4294967295)[\\s]+)(?:-k[\\s]+|-F[\\s]+key=)[\\S]+[\\s]*$",
+																"instance": "1"
+															}
+														}
+													]
+												},
+												"child": null
+											},
+											{
+												"node_id": "oval:ssg-test_64bit_arufm_eperm_creat_auditctl:tst:1",
+												"type": "value",
+												"value": "false",
+												"negation": false,
+												"comment": "audit auditctl 64-bit file eperm",
+												"tag": "Test",
+												"test_result_details": {
+													"id": "oval:ssg-test_64bit_arufm_eperm_creat_auditctl:tst:1",
+													"comment": "audit auditctl 64-bit file eperm",
+													"objects": [
+														{
+															"oval:ssg-object_64bit_arufm_eperm_creat_auditctl:obj:1": "does not exist",
+															"textfilecontent54_object": {
+																"filepath": "/etc/audit/audit.rules",
+																"pattern": "^[\\s]*-a[\\s]+always,exit[\\s]+(?:-F[\\s]+arch=b64[\\s]+)(?:.*(-S[\\s]+creat[\\s]+|([\\s]+|[,])creat([\\s]+|[,])))(?:(?!-F[\\s]+a\\d&).)*(?:-F\\s+exit=-EPERM)[\\s]+(?:-F\\s+auid>=1000[\\s]+)(?:-F\\s+auid!=(unset|4294967295)[\\s]+)(?:-k[\\s]+|-F[\\s]+key=)[\\S]+[\\s]*$",
+																"instance": "1"
+															}
+														}
+													]
+												},
+												"child": null
+											}
+										]
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		]
+	}
+}
