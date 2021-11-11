@@ -86,9 +86,8 @@ def process_oval_results(result_file):
             description = definition.find('./ns3:metadata/ns3:description', namespaces=namespaces)
             references = definition.findall('./ns3:metadata/ns3:reference', namespaces=namespaces)
 
-            refs = []
+            refs = [{'type':'OVAL', 'ref':id, 'URL':None}]
             for reference in references:
-                print(reference.attrib)
                 refs.append({'type':reference.attrib['source'], 'ref':reference.attrib['ref_id'], 'URL':reference.attrib['ref_url']})
             
             issues.append({

@@ -50,31 +50,16 @@ def oval_scan(details: OVALScanRequest):
     scanner = scanners.get(details.scanner, 'oscap-ssh')
 
     result_file = uuid.uuid4()
-    # process = subprocess.Popen(f"{scanner} {username}@{host} {port} {scan_type} --results results/{result_file}.xml datasets/com.ubuntu.xenial.usn.oval.xml", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    process = subprocess.Popen(f"{scanner} {username}@{host} {port} {scan_type} --results results/{result_file}.xml datasets/com.ubuntu.xenial.usn.oval.xml", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     
-    # for line in process.stdout.readlines():
-        # print(line) #log events
+    console_log = ''
+    for line in process.stdout.readlines():
+        console_log += line.decode("utf-8", "ignore").replace('\n','').replace('\r\n','').replace('\r','')
 
-    # retval = process.wait()
-    # return process_oval_results(f"results/{result_file}.xml")
-    return process_oval_results("results/0e117d4d-efc2-4167-ab45-23cf8a894055.xml")
+    retval = process.wait()
+    if(retval == 0):
+        return process_oval_results(f"results/{result_file}.xml")
+    else:
+        raise HTTPException(status_code=422, detail=console_log)
+    # return process_oval_results("results/0e117d4d-efc2-4167-ab45-23cf8a894055.xml")
 
-@router.post("test")
-def create(commons: dict = Depends(common_params), db: Session = Depends(get_db)):
-    
-    file = 'results/out_unix_2nd.xml'
-    with open(file,"r") as xml_obj:
-        results = xmltodict.parse(xml_obj.read())
-        xml_obj.close()
-
-    # with open('results/file.txt', 'w+') as file:
-    #     file.write(json.dumps(results, indent=4))
-
-    # for obj in results['oval_results']['oval_definitions']['definitions']['definition']:
-    #     break
-    
-    for result in results['oval_results']['results']['system']['definitions']['definition']:
-        if result['@result'] == 'true':
-            return result
-
-    return 'end'
