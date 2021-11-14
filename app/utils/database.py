@@ -8,7 +8,7 @@ load_dotenv()
 
 DB_USERNAME = os.getenv('DB_USERNAME')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
-SQLALCHEMY_DB_URL = "postgresql://%s:%s@db/issue" % (DB_USERNAME, DB_PASSWORD)
+SQLALCHEMY_DB_URL = "postgresql://%s:%s@db/scanner" % (DB_USERNAME, DB_PASSWORD)
 config = {'db.url':SQLALCHEMY_DB_URL, 'db.echo':'True'}
 
 # engine = create_engine(SQLALCHEMY_DB_URL)
