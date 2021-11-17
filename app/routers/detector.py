@@ -16,17 +16,15 @@ from sqlalchemy_filters import apply_pagination
 import time
 import os
 import uuid
-from sqlalchemy.dialects import postgresql
-import xml.etree.ElementTree as ET
-# import xmltodict
 import json
 import subprocess
 from schemas import OVALScanRequest
 from models import ScanType, Dataset, Profile, Scan, Result, Reference, ScanStatu, Clas
-
+import requests
 
 
 page_size = os.getenv('PAGE_SIZE')
+CREDENTIAL_SERVICE_URL = os.getenv('CREDENTIAL_SERVICE_URL')
 
 router = APIRouter(
     prefix="/v1/scans",
@@ -38,7 +36,6 @@ router = APIRouter(
 
 @router.post("")
 def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
-
     scan_type_query = db.query(ScanType).filter(ScanType.code.ilike(details.scan_type.strip()))
     if(scan_type_query.count() > 0):
         scan_type = scan_type_query.one()
@@ -54,7 +51,8 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
     if dataset_query.count() > 0:
         dataset = dataset_query.one()
     else:
-        raise HTTPException(status_code=422, detail="Invalid OS") 
+        raise HTTPException(status_code=422, detail="Invalid OS")  
+ 
 
     #Store scan request
     scan_status = db.query(ScanStatu).filter(ScanStatu.code == "SCANNING").one()
@@ -95,12 +93,24 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
             raise HTTPException(status_code=422, detail="Invalid Profile")
 
     result_file = uuid.uuid4()
-    process = subprocess.Popen(f"oscap-ssh {username}@{host} {port} {scan_command} {profile_command} {result_type} results/{result_file}.xml datasets/{dataset.file}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    #retrive keys
+    response = requests.get(CREDENTIAL_SERVICE_URL+'/v1/credentials/'+details.secret_id)
+    encrypted_key = json.loads(response.text)['data']['encrypted_key']
+    key_file_path = "keys/"+str(id)+str(result_file)+".ppk"
+    key_file = open(key_file_path, "w")
+    key_file.write(encrypted_key)
+    key_file.close()
+    os.chmod(key_file_path, int('600', base=8))
+
+    process = subprocess.Popen(f"export SSH_ADDITIONAL_OPTIONS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i {key_file_path}' && oscap-ssh {username}@{host} {port} {scan_command} {profile_command} {result_type} results/{result_file}.xml datasets/{dataset.file}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
    
     console_log = ''
     for line in process.stdout.readlines():
         console_log += line.decode("utf-8", "ignore").replace('\n','').replace('\r\n','').replace('\r','')
 
+    #delete key file
+    os.remove(key_file_path)
 
     if os.path.exists(f"results/{result_file}.xml"):
         #Scan completed

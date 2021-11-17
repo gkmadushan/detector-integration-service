@@ -10,3 +10,4 @@ class OVALScanRequest(BaseModel):
     port: int
     os: str
     profile: Optional[str]
+    secret_id: Optional[str]
