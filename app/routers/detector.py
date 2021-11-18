@@ -21,10 +21,11 @@ import subprocess
 from schemas import OVALScanRequest
 from models import ScanType, Dataset, Profile, Scan, Result, Reference, ScanStatu, Clas
 import requests
-
+import pika #rabbitmq
 
 page_size = os.getenv('PAGE_SIZE')
 CREDENTIAL_SERVICE_URL = os.getenv('CREDENTIAL_SERVICE_URL')
+RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
 
 router = APIRouter(
     prefix="/v1/scans",
@@ -129,6 +130,12 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
             results = process_xccdf_results(f"results/{result_file}.xml")
 
         try:
+            connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST, heartbeat=300, blocked_connection_timeout=60))
+            channel = connection.channel()
+            all_classes = db.query(Clas).all()
+            for detection_classes in all_classes:
+                channel.queue_declare(queue = detection_classes.name, durable=True)
+
             for res in results:
                 classdef = db.query(Clas).filter(Clas.code == res['class']).one()
                 result_id = uuid.uuid4().hex
@@ -156,9 +163,14 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
                             url=reference['URL']
                         )
                         db.add(reference_entity)
-                
+
+                #push results to the queue
+                if(res['status'] == True):
+                    channel.basic_publish(exchange='', routing_key=res['class'], body=json.dumps(res))
+                                
 
             db.commit()
+            connection.close()
         except IntegrityError as err:
             db.rollback()
         return {}
