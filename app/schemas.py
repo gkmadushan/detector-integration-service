@@ -11,3 +11,4 @@ class OVALScanRequest(BaseModel):
     os: str
     profile: Optional[str]
     secret_id: Optional[str]
+    reference: Optional[str]

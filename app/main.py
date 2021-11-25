@@ -22,4 +22,4 @@ app.add_middleware(
 )
 
 #user routes
-app.include_router(detector.router)
+app.include_router(detector.router) 

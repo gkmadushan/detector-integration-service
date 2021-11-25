@@ -2,6 +2,7 @@ from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, St
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql.expression import null
 
 Base = declarative_base()
 metadata = Base.metadata
@@ -52,6 +53,7 @@ class Scan(Base):
     ended_at = Column(DateTime)
     scan_type_id = Column(ForeignKey('scan_type.id'), nullable=False)
     scan_status_id = Column(ForeignKey('scan_status.id'), nullable=False)
+    reference = Column(UUID, nullable=True)
 
     scan_status = relationship('ScanStatu')
     scan_type = relationship('ScanType')
@@ -80,6 +82,7 @@ class Result(Base):
     score = Column(Float, nullable=False, server_default=text("0.00"))
     fix_available = Column(Boolean, nullable=False, server_default=text("false"))
     impact = Column(String(1000))
+    reference = Column(UUID, nullable=True)
 
     _class = relationship('Clas')
     scan = relationship('Scan')
@@ -96,3 +99,8 @@ class Reference(Base):
     result_id = Column(ForeignKey('result.id'), nullable=False)
 
     result = relationship('Result')
+
+class O(Base):
+    __tablename__ = 'os'
+
+    os = Column(String, primary_key=True)

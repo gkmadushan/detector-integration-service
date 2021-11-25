@@ -19,9 +19,10 @@ import uuid
 import json
 import subprocess
 from schemas import OVALScanRequest
-from models import ScanType, Dataset, Profile, Scan, Result, Reference, ScanStatu, Clas
+from models import ScanType, Dataset, Profile, Scan, Result, Reference, ScanStatu, Clas, O
 import requests
 import pika #rabbitmq
+
 
 page_size = os.getenv('PAGE_SIZE')
 CREDENTIAL_SERVICE_URL = os.getenv('CREDENTIAL_SERVICE_URL')
@@ -62,7 +63,8 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
         id = id,
         started_at = datetime.now(),
         scan_type_id = scan_type.id,
-        scan_status_id = scan_status.id
+        scan_status_id = scan_status.id,
+        reference = details.reference
     )
 
     try:
@@ -97,12 +99,17 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
 
     #retrive keys
     response = requests.get(CREDENTIAL_SERVICE_URL+'/v1/credentials/'+details.secret_id)
-    encrypted_key = json.loads(response.text)['data']['encrypted_key']
+    try:
+        response_json = json.loads(response.text)
+
+    except:
+        return response.text
+    encrypted_key = response_json['data']['encrypted_key']
     key_file_path = "keys/"+str(id)+str(result_file)+".ppk"
     key_file = open(key_file_path, "w")
     key_file.write(encrypted_key)
     key_file.close()
-    os.chmod(key_file_path, int('600', base=8))
+    os.chmod(key_file_path, int('600', base=8))      
 
     process = subprocess.Popen(f"export SSH_ADDITIONAL_OPTIONS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i {key_file_path}' && oscap-ssh {username}@{host} {port} {scan_command} {profile_command} {result_type} results/{result_file}.xml datasets/{dataset.file}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
    
@@ -148,7 +155,8 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
                     status=res['status'] == True and True or False,
                     score=res['severity'],
                     fix_available=len(res['fixes']) > 0 and True or False,
-                    impact=res['impact']
+                    impact=res['impact'],
+                    reference=details.reference
                 )
                 db.add(result)
 
@@ -166,6 +174,8 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
 
                 #push results to the queue
                 if(res['status'] == True):
+                    res['scan_id'] = id
+                    res['reference'] = details.reference
                     channel.basic_publish(exchange='', routing_key=res['class'], body=json.dumps(res))
                                 
 
@@ -185,3 +195,33 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
             db.rollback()
         raise HTTPException(status_code=422, detail=console_log)
 
+
+@router.get("/types")
+def get_by_filter(db: Session = Depends(get_db)):
+    types = db.query(ScanType).all()
+
+    response = {
+        "data": types
+    }
+
+    return response
+
+@router.get("/classes")
+def get_by_filter(db: Session = Depends(get_db)):
+    types = db.query(Clas).all()
+
+    response = {
+        "data": types
+    }
+
+    return response
+
+@router.get("/os")
+def get_by_filter(db: Session = Depends(get_db)):
+    os = db.query(O).all()
+
+    response = {
+        "data": os
+    }
+
+    return response
