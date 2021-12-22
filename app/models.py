@@ -79,7 +79,7 @@ class Result(Base):
     title = Column(String(1000))
     description = Column(String(6000))
     status = Column(Boolean, nullable=False, server_default=text("false"))
-    score = Column(Float, nullable=False, server_default=text("0.00"))
+    score = Column(String(6000))
     fix_available = Column(Boolean, nullable=False, server_default=text("false"))
     impact = Column(String(1000))
     reference = Column(UUID, nullable=True)
@@ -100,7 +100,8 @@ class Reference(Base):
 
     result = relationship('Result')
 
+
 class O(Base):
-    __tablename__ = 'os'
+    __tablename__ = 'osr'
 
     os = Column(String, primary_key=True)

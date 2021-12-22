@@ -2,6 +2,7 @@ from datetime import time
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
+
 class OVALScanRequest(BaseModel):
     scan_type: str
     ipv4: Optional[str]
@@ -12,3 +13,4 @@ class OVALScanRequest(BaseModel):
     profile: Optional[str]
     secret_id: Optional[str]
     reference: Optional[str]
+    autofix: bool = False

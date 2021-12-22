@@ -2,7 +2,7 @@ FROM python:3.8
 
 WORKDIR /usr/src/app
 
-COPY requirements.txt ./
+COPY app/requirements.txt ./
 RUN python -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 RUN apt update && apt install -y cmake libdbus-1-dev libdbus-glib-1-dev libcurl4-openssl-dev \

@@ -10,7 +10,7 @@ from dependencies import get_token_header
 import uuid
 from datetime import datetime
 from exceptions import username_already_exists
-from sqlalchemy import over
+from sqlalchemy import over, text
 from sqlalchemy import engine_from_config, and_, func, literal_column, case
 from sqlalchemy_filters import apply_pagination
 import time
@@ -21,7 +21,11 @@ import subprocess
 from schemas import OVALScanRequest
 from models import ScanType, Dataset, Profile, Scan, Result, Reference, ScanStatu, Clas, O
 import requests
-import pika #rabbitmq
+import pika  # rabbitmq
+from matplotlib import colors
+import matplotlib.pyplot as plt
+import base64
+import io
 
 
 page_size = os.getenv('PAGE_SIZE')
@@ -42,29 +46,31 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
     if(scan_type_query.count() > 0):
         scan_type = scan_type_query.one()
     else:
-        raise HTTPException(status_code=422, detail="Invalid scan type") 
+        raise HTTPException(status_code=422, detail="Invalid scan type")
 
-    #list of available commands based on the scan type
-    scan_type_commands = {'OVAL': 'oval eval', 'XCCDF':'xccdf eval'}
+    # list of available commands based on the scan type
+    scan_type_commands = {'OVAL': 'oval eval', 'XCCDF': 'xccdf eval'}
     scan_command = scan_type_commands.get(scan_type.code, '')
-    
-    #get the dataset based on the OS and scan type
+
+    if details.autofix == True:
+        scan_command = scan_command + ' --remediate'
+
+    # get the dataset based on the OS and scan type
     dataset_query = db.query(Dataset).filter(Dataset.scan_type == scan_type, Dataset.os == details.os)
     if dataset_query.count() > 0:
         dataset = dataset_query.one()
     else:
-        raise HTTPException(status_code=422, detail="Invalid OS")  
- 
+        raise HTTPException(status_code=422, detail="Invalid OS")
 
-    #Store scan request
+    # Store scan request
     scan_status = db.query(ScanStatu).filter(ScanStatu.code == "SCANNING").one()
     id = uuid.uuid4().hex
     scan = Scan(
-        id = id,
-        started_at = datetime.now(),
-        scan_type_id = scan_type.id,
-        scan_status_id = scan_status.id,
-        reference = details.reference
+        id=id,
+        started_at=datetime.now(),
+        scan_type_id=scan_type.id,
+        scan_status_id=scan_status.id,
+        reference=details.reference
     )
 
     try:
@@ -73,8 +79,8 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
     except IntegrityError as err:
         db.rollback()
 
-    #result types
-    result_types = {'OVAL':'--results', 'XCCDF':'--results-arf'}
+    # result types
+    result_types = {'OVAL': '--results', 'XCCDF': '--results-arf'}
     result_type = result_types.get(scan_type.code, '--results')
 
     if details.ipv6:
@@ -97,7 +103,7 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
 
     result_file = uuid.uuid4()
 
-    #retrive keys
+    # retrive keys
     response = requests.get(CREDENTIAL_SERVICE_URL+'/v1/credentials/'+details.secret_id)
     try:
         response_json = json.loads(response.text)
@@ -109,19 +115,20 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
     key_file = open(key_file_path, "w")
     key_file.write(encrypted_key)
     key_file.close()
-    os.chmod(key_file_path, int('600', base=8))      
+    os.chmod(key_file_path, int('600', base=8))
 
-    process = subprocess.Popen(f"export SSH_ADDITIONAL_OPTIONS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i {key_file_path}' && oscap-ssh {username}@{host} {port} {scan_command} {profile_command} {result_type} results/{result_file}.xml datasets/{dataset.file}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-   
+    process = subprocess.Popen(
+        f"export SSH_ADDITIONAL_OPTIONS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i {key_file_path}' && oscap-ssh {username}@{host} {port} {scan_command} {profile_command} {result_type} results/{result_file}.xml datasets/{dataset.file}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
     console_log = ''
     for line in process.stdout.readlines():
-        console_log += line.decode("utf-8", "ignore").replace('\n','').replace('\r\n','').replace('\r','')
+        console_log += line.decode("utf-8", "ignore").replace('\n', '').replace('\r\n', '').replace('\r', '')
 
-    #delete key file
+    # delete key file
     os.remove(key_file_path)
 
     if os.path.exists(f"results/{result_file}.xml"):
-        #Scan completed
+        # Scan completed
         scan_status = db.query(ScanStatu).filter(ScanStatu.code == "ENDED").one()
         scan.scan_status_id = scan_status.id
         scan.ended_at = datetime.now()
@@ -137,11 +144,12 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
             results = process_xccdf_results(f"results/{result_file}.xml")
 
         try:
-            connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST, heartbeat=300, blocked_connection_timeout=60))
+            connection = pika.BlockingConnection(pika.ConnectionParameters(
+                RABBITMQ_HOST, heartbeat=300, blocked_connection_timeout=60))
             channel = connection.channel()
             all_classes = db.query(Clas).all()
             for detection_classes in all_classes:
-                channel.queue_declare(queue = detection_classes.name, durable=True)
+                channel.queue_declare(queue=detection_classes.name, durable=True)
 
             for res in results:
                 classdef = db.query(Clas).filter(Clas.code == res['class']).one()
@@ -165,19 +173,18 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
                         reference_entity = Reference(
                             id=uuid.uuid4().hex,
                             result_id=result_id,
-                            type_code = reference['type'],
+                            type_code=reference['type'],
                             code=reference['ref'],
                             name=reference['ref'],
                             url=reference['URL']
                         )
                         db.add(reference_entity)
 
-                #push results to the queue
+                # push results to the queue
                 if(res['status'] == True):
                     res['scan_id'] = id
                     res['reference'] = details.reference
                     channel.basic_publish(exchange='', routing_key=res['class'], body=json.dumps(res))
-                                
 
             db.commit()
             connection.close()
@@ -206,6 +213,7 @@ def get_by_filter(db: Session = Depends(get_db)):
 
     return response
 
+
 @router.get("/classes")
 def get_by_filter(db: Session = Depends(get_db)):
     types = db.query(Clas).all()
@@ -216,6 +224,7 @@ def get_by_filter(db: Session = Depends(get_db)):
 
     return response
 
+
 @router.get("/os")
 def get_by_filter(db: Session = Depends(get_db)):
     os = db.query(O).all()
@@ -224,4 +233,94 @@ def get_by_filter(db: Session = Depends(get_db)):
         "data": os
     }
 
+    return response
+
+
+@router.get("/graphs")
+def new_issues(commons: dict = Depends(common_params), db: Session = Depends(get_db)):
+    output = []
+    # Issue summary graph
+    result = db.execute(text(f"""
+        select count(*), ss.name from scan s inner join scan_status ss on ss.id = s.scan_status_id where s.started_at BETWEEN
+    NOW()::DATE-EXTRACT(DOW FROM NOW())::INTEGER-60
+    AND NOW()::DATE-EXTRACT(DOW from NOW())::INTEGER  group by ss.id, ss.name 
+        """))
+    rows = []
+    try:
+        for row in result:
+            rows.append(row)
+
+        y, x = zip(*rows)
+        fig, ax = plt.subplots(figsize=(11, 4))
+        f1 = io.BytesIO()
+
+        plt.pie(y, labels=x)
+        plt.title('Scan Summary for the last 7 Days')
+
+        fig.savefig(f1, format="svg")
+
+        output.append(base64.b64encode(f1.getvalue()))
+
+        return output
+    except:
+        return []
+
+
+@router.get("")
+def get_by_filter(db: Session = Depends(get_db), resources: Optional[str] = None, page: Optional[str] = 1, limit: Optional[int] = page_size):
+    filters = []
+
+    if(resources):
+        filters.append(Scan.reference.in_(resources.split(",")))
+
+    query = db.query(
+        over(func.row_number(), order_by='started_at').label('index'),
+        Scan.id,
+        Scan.started_at,
+        Scan.ended_at,
+        ScanStatu.name,
+        Scan.reference
+    )
+
+    query, pagination = apply_pagination(query.where(
+        and_(*filters)).join(Scan.scan_status).order_by(Scan.started_at.asc()), page_number=int(page), page_size=int(limit))
+
+    response = {
+        "data": query.all(),
+        "meta": {
+            "total_records": pagination.total_results,
+            "limit": pagination.page_size,
+            "num_pages": pagination.num_pages,
+            "current_page": pagination.page_number
+        }
+    }
+
+    return response
+
+
+@router.get("/{id}")
+def get_by_id(id: str, db: Session = Depends(get_db)):
+    filters = []
+
+    if(id):
+        filters.append(Result.scan_id == id)
+
+    query = db.query(
+        Result.id,
+        Clas.name,
+        Result.title,
+        Result.description,
+        Result.status,
+        Result.score,
+        Result.fix_available,
+        Result.impact,
+        Result.reference
+    )
+    results = query.where(
+        and_(*filters)).join(Result._class).all()
+    if results == None:
+        raise HTTPException(status_code=404, detail="Scan results not found")
+    response = {
+        "data": results
+    }
     return response
