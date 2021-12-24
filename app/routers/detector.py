@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from dependencies import common_params, get_db, get_secret_random, process_oval_results, process_xccdf_results
 from sqlalchemy.orm import Session
 from typing import Optional
-from dependencies import get_token_header
+from dependencies import get_token_header, scan_details_notify
 import uuid
 from datetime import datetime
 from exceptions import username_already_exists
@@ -52,9 +52,6 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
     scan_type_commands = {'OVAL': 'oval eval', 'XCCDF': 'xccdf eval'}
     scan_command = scan_type_commands.get(scan_type.code, '')
 
-    if details.autofix == True:
-        scan_command = scan_command + ' --remediate'
-
     # get the dataset based on the OS and scan type
     dataset_query = db.query(Dataset).filter(Dataset.scan_type == scan_type, Dataset.os == details.os)
     if dataset_query.count() > 0:
@@ -98,6 +95,8 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
         if profile_query.count() > 0:
             profile = profile_query.one()
             profile_command = f'--profile {profile.code}'
+            if details.autofix == True:
+                profile_command = profile_command + ' --remediate'
         else:
             raise HTTPException(status_code=422, detail="Invalid Profile")
 
@@ -187,10 +186,13 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
                     channel.basic_publish(exchange='', routing_key=res['class'], body=json.dumps(res))
 
             db.commit()
+            channel.queue_declare(queue='notifications', durable=True)
+            notification = scan_details_notify(details)
+            channel.basic_publish(exchange='', routing_key='notifications', body=json.dumps(notification))
             connection.close()
         except IntegrityError as err:
             db.rollback()
-        return {}
+        return notification
 
     else:
         scan_status = db.query(ScanStatu).filter(ScanStatu.code == "INTERRUPTED").one()
