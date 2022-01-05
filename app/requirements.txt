@@ -17,6 +17,8 @@ email-to==0.1.0
 fastapi==0.65.2
 filelock==3.0.12
 fonttools==4.28.3
+gitdb==4.0.9
+GitPython==3.1.24
 graphql-core==2.3.2
 greenlet==1.1.1
 h11==0.12.0
@@ -62,6 +64,7 @@ requests==2.26.0
 Rx==1.6.1
 setuptools-scm==6.3.2
 six==1.16.0
+smmap==5.0.0
 sqlacodegen==2.3.0
 SQLAlchemy==1.4.23
 sqlalchemy-filters==0.12.0
@@ -76,5 +79,6 @@ uvicorn==0.14.0
 virtualenv==20.4.7
 watchgod==0.7
 websockets==8.1
+Whoosh==2.7.4
 wrapt==1.12.1
 zipp==3.6.0

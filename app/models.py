@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, text, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -51,12 +51,10 @@ class Scan(Base):
     id = Column(UUID, primary_key=True)
     started_at = Column(DateTime)
     ended_at = Column(DateTime)
-    scan_type_id = Column(ForeignKey('scan_type.id'), nullable=False)
     scan_status_id = Column(ForeignKey('scan_status.id'), nullable=False)
     reference = Column(UUID, nullable=True)
 
     scan_status = relationship('ScanStatu')
-    scan_type = relationship('ScanType')
 
 
 class Profile(Base):
@@ -105,3 +103,16 @@ class O(Base):
     __tablename__ = 'osr'
 
     os = Column(String, primary_key=True)
+
+
+class Definition(Base):
+    __tablename__ = 'definition'
+
+    id = Column(UUID, primary_key=True)
+    cve = Column(String, nullable=False)
+    cwe = Column(String, nullable=False)
+    description = Column(String(20000), nullable=False)
+    score = Column(Numeric(10, 2), nullable=False)
+    exploit_count = Column(Integer, nullable=False)
+    url = Column(String(500), nullable=False)
+    publish_date = Column(DateTime, nullable=False)

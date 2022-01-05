@@ -26,6 +26,7 @@ from matplotlib import colors
 import matplotlib.pyplot as plt
 import base64
 import io
+import sys
 
 
 page_size = os.getenv('PAGE_SIZE')
@@ -42,167 +43,172 @@ router = APIRouter(
 
 @router.post("")
 def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
-    scan_type_query = db.query(ScanType).filter(ScanType.code.ilike(details.scan_type.strip()))
-    if(scan_type_query.count() > 0):
-        scan_type = scan_type_query.one()
-    else:
-        raise HTTPException(status_code=422, detail="Invalid scan type")
+    scan_type_query = db.query(ScanType)
+    if scan_type_query.count() > 0:
+        id = uuid.uuid4().hex
+        # Store scan request
+        scan_status = db.query(ScanStatu).filter(ScanStatu.code == "SCANNING").one()
+        scan = Scan(
+            id=id,
+            started_at=datetime.now(),
+            scan_status_id=scan_status.id,
+            reference=details.reference
+        )
 
-    # list of available commands based on the scan type
-    scan_type_commands = {'OVAL': 'oval eval', 'XCCDF': 'xccdf eval'}
-    scan_command = scan_type_commands.get(scan_type.code, '')
-
-    # get the dataset based on the OS and scan type
-    dataset_query = db.query(Dataset).filter(Dataset.scan_type == scan_type, Dataset.os == details.os)
-    if dataset_query.count() > 0:
-        dataset = dataset_query.one()
-    else:
-        raise HTTPException(status_code=422, detail="Invalid OS")
-
-    # Store scan request
-    scan_status = db.query(ScanStatu).filter(ScanStatu.code == "SCANNING").one()
-    id = uuid.uuid4().hex
-    scan = Scan(
-        id=id,
-        started_at=datetime.now(),
-        scan_type_id=scan_type.id,
-        scan_status_id=scan_status.id,
-        reference=details.reference
-    )
-
-    try:
-        db.add(scan)
-        db.commit()
-    except IntegrityError as err:
-        db.rollback()
-
-    # result types
-    result_types = {'OVAL': '--results', 'XCCDF': '--results-arf'}
-    result_type = result_types.get(scan_type.code, '--results')
-
-    if details.ipv6:
-        host = details.ipv6
-    else:
-        host = details.ipv4
-
-    port = details.port
-    username = details.username
-
-    profile_command = ''
-
-    if scan_type.code == 'XCCDF':
-        profile_query = db.query(Profile).filter(Profile.dataset == dataset, Profile.id == details.profile)
-        if profile_query.count() > 0:
-            profile = profile_query.one()
-            profile_command = f'--profile {profile.code}'
-            if details.autofix == True:
-                profile_command = profile_command + ' --remediate'
-        else:
-            raise HTTPException(status_code=422, detail="Invalid Profile")
-
-    result_file = uuid.uuid4()
-
-    # retrive keys
-    response = requests.get(CREDENTIAL_SERVICE_URL+'/v1/credentials/'+details.secret_id)
-    try:
-        response_json = json.loads(response.text)
-
-    except:
-        return response.text
-    encrypted_key = response_json['data']['encrypted_key']
-    key_file_path = "keys/"+str(id)+str(result_file)+".ppk"
-    key_file = open(key_file_path, "w")
-    key_file.write(encrypted_key)
-    key_file.close()
-    os.chmod(key_file_path, int('600', base=8))
-
-    process = subprocess.Popen(
-        f"export SSH_ADDITIONAL_OPTIONS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i {key_file_path}' && oscap-ssh {username}@{host} {port} {scan_command} {profile_command} {result_type} results/{result_file}.xml datasets/{dataset.file}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-    console_log = ''
-    for line in process.stdout.readlines():
-        console_log += line.decode("utf-8", "ignore").replace('\n', '').replace('\r\n', '').replace('\r', '')
-
-    # delete key file
-    os.remove(key_file_path)
-
-    if os.path.exists(f"results/{result_file}.xml"):
-        # Scan completed
-        scan_status = db.query(ScanStatu).filter(ScanStatu.code == "ENDED").one()
-        scan.scan_status_id = scan_status.id
-        scan.ended_at = datetime.now()
         try:
             db.add(scan)
             db.commit()
         except IntegrityError as err:
             db.rollback()
 
-        if scan_type.code == 'OVAL':
-            results = process_oval_results(f"results/{result_file}.xml")
-        elif scan_type.code == 'XCCDF':
-            results = process_xccdf_results(f"results/{result_file}.xml")
+        for scan_type in scan_type_query.all():
+            # list of available commands based on the scan type
+            scan_type_commands = {'OVAL': 'oval eval', 'XCCDF': 'xccdf eval'}
+            scan_command = scan_type_commands.get(scan_type.code, '')
 
-        try:
-            connection = pika.BlockingConnection(pika.ConnectionParameters(
-                RABBITMQ_HOST, heartbeat=300, blocked_connection_timeout=60))
-            channel = connection.channel()
-            all_classes = db.query(Clas).all()
-            for detection_classes in all_classes:
-                channel.queue_declare(queue=detection_classes.name, durable=True)
+            # get the dataset based on the OS and scan type
+            dataset_query = db.query(Dataset).filter(Dataset.scan_type == scan_type, Dataset.os == details.os)
+            if dataset_query.count() > 0:
+                dataset = dataset_query.first()
+            else:
+                # raise HTTPException(status_code=422, detail="Invalid OS or dataset not found")
+                continue
 
-            for res in results:
-                classdef = db.query(Clas).filter(Clas.code == res['class']).one()
-                result_id = uuid.uuid4().hex
-                result = Result(
-                    id=result_id,
-                    scan_id=id,
-                    class_id=classdef.id,
-                    title=res['title'],
-                    description=res['description'],
-                    status=res['status'] == True and True or False,
-                    score=res['severity'],
-                    fix_available=len(res['fixes']) > 0 and True or False,
-                    impact=res['impact'],
-                    reference=details.reference
-                )
-                db.add(result)
+            # result types
+            result_types = {'OVAL': '--results', 'XCCDF': '--results-arf'}
+            result_type = result_types.get(scan_type.code, '--results')
 
-                if(len(res['references'])):
-                    for reference in res['references']:
-                        reference_entity = Reference(
-                            id=uuid.uuid4().hex,
-                            result_id=result_id,
-                            type_code=reference['type'],
-                            code=reference['ref'],
-                            name=reference['ref'],
-                            url=reference['URL']
+            if details.ipv6:
+                host = details.ipv6
+            else:
+                host = details.ipv4
+
+            port = details.port
+            username = details.username
+
+            profile_command = ''
+
+            if scan_type.code == 'XCCDF':
+                profile_query = db.query(Profile).filter(Profile.dataset == dataset)
+                if profile_query.count() > 0:
+                    profile = profile_query.first()
+                    profile_command = f'--profile {profile.code}'
+                    if details.autofix == True:
+                        profile_command = profile_command + ' --remediate'
+                else:
+                    # raise HTTPException(status_code=422, detail="Invalid Profile")
+                    continue
+
+            result_file = uuid.uuid4()
+
+            # retrive keys
+            response = requests.get(CREDENTIAL_SERVICE_URL+'/v1/credentials/'+details.secret_id)
+            try:
+                response_json = json.loads(response.text)
+            except:
+                return response.text
+            encrypted_key = response_json['data']['encrypted_key']
+            key_file_path = "keys/"+str(id)+str(result_file)+".ppk"
+            key_file = open(key_file_path, "w")
+            key_file.write(encrypted_key)
+            key_file.close()
+            os.chmod(key_file_path, int('600', base=8))
+
+            process = subprocess.Popen(
+                f"export SSH_ADDITIONAL_OPTIONS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i {key_file_path}' && oscap-ssh {username}@{host} {port} {scan_command} {profile_command} {result_type} results/{result_file}.xml datasets/{dataset.file}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            console_log = ''
+            for line in process.stdout.readlines():
+                console_log += line.decode("utf-8", "ignore").replace('\n', '').replace('\r\n', '').replace('\r', '')
+
+            return console_log
+
+            # delete key file
+            os.remove(key_file_path)
+
+            return f"results/{result_file}.xml"
+
+            if os.path.exists(f"results/{result_file}.xml"):
+                # Scan completed
+                scan_status = db.query(ScanStatu).filter(ScanStatu.code == "ENDED").one()
+                scan.scan_status_id = scan_status.id
+                scan.ended_at = datetime.now()
+                try:
+                    db.add(scan)
+                    db.commit()
+                except IntegrityError as err:
+                    db.rollback()
+
+                if scan_type.code == 'OVAL':
+                    results = process_oval_results(f"results/{result_file}.xml")
+                elif scan_type.code == 'XCCDF':
+                    results = process_xccdf_results(f"results/{result_file}.xml")
+
+                try:
+                    connection = pika.BlockingConnection(pika.ConnectionParameters(
+                        RABBITMQ_HOST, heartbeat=300, blocked_connection_timeout=60))
+                    channel = connection.channel()
+                    all_classes = db.query(Clas).all()
+                    for detection_classes in all_classes:
+                        channel.queue_declare(queue=detection_classes.name, durable=True)
+
+                    for res in results:
+                        classdef = db.query(Clas).filter(Clas.code == res['class']).one()
+                        result_id = uuid.uuid4().hex
+                        result = Result(
+                            id=result_id,
+                            scan_id=id,
+                            class_id=classdef.id,
+                            title=res['title'],
+                            description=res['description'],
+                            status=res['status'] == True and True or False,
+                            score=res['severity'],
+                            fix_available=len(res['fixes']) > 0 and True or False,
+                            impact=res['impact'],
+                            reference=details.reference
                         )
-                        db.add(reference_entity)
+                        db.add(result)
 
-                # push results to the queue
-                if(res['status'] == True):
-                    res['scan_id'] = id
-                    res['reference'] = details.reference
-                    channel.basic_publish(exchange='', routing_key=res['class'], body=json.dumps(res))
+                        if(len(res['references'])):
+                            for reference in res['references']:
+                                reference_entity = Reference(
+                                    id=uuid.uuid4().hex,
+                                    result_id=result_id,
+                                    type_code=reference['type'],
+                                    code=reference['ref'],
+                                    name=reference['ref'],
+                                    url=reference['URL']
+                                )
+                                db.add(reference_entity)
 
-            db.commit()
-            channel.queue_declare(queue='notifications', durable=True)
-            notification = scan_details_notify(details)
-            channel.basic_publish(exchange='', routing_key='notifications', body=json.dumps(notification))
-            connection.close()
-        except IntegrityError as err:
-            db.rollback()
-        return notification
+                        # push results to the queue
+                        res['scan_id'] = id
+                        res['reference'] = details.reference
+                        channel.basic_publish(exchange='', routing_key=res['class'], body=json.dumps(res))
 
+                    db.commit()
+                    channel.queue_declare(queue='notifications', durable=True)
+                    notification = scan_details_notify(details)
+                    channel.basic_publish(exchange='', routing_key='notifications', body=json.dumps(notification))
+                    connection.close()
+                except IntegrityError as err:
+                    db.rollback()
+
+            else:
+                scan_status = db.query(ScanStatu).filter(ScanStatu.code == "INTERRUPTED").one()
+                scan.scan_status_id = scan_status.id
+                try:
+                    db.add(scan)
+                    db.commit()
+                except IntegrityError as err:
+                    db.rollback()
+                # raise HTTPException(status_code=422, detail=console_log)
+                continue
     else:
-        scan_status = db.query(ScanStatu).filter(ScanStatu.code == "INTERRUPTED").one()
-        scan.scan_status_id = scan_status.id
-        try:
-            db.add(scan)
-            db.commit()
-        except IntegrityError as err:
-            db.rollback()
-        raise HTTPException(status_code=422, detail=console_log)
+        raise HTTPException(status_code=422, detail='No scan types')
+
+    db.close()
+    return True
 
 
 @router.get("/types")
@@ -243,11 +249,12 @@ def new_issues(commons: dict = Depends(common_params), db: Session = Depends(get
     output = []
     # Issue summary graph
     result = db.execute(text(f"""
-        select count(*), ss.name from scan s inner join scan_status ss on ss.id = s.scan_status_id where s.started_at BETWEEN
-    NOW()::DATE-EXTRACT(DOW FROM NOW())::INTEGER-60
-    AND NOW()::DATE-EXTRACT(DOW from NOW())::INTEGER  group by ss.id, ss.name 
+        select count(*), ss.name from scan s 
+        inner join scan_status ss on ss.id = s.scan_status_id 
+         group by ss.id, ss.name 
         """))
     rows = []
+    db.close()
     try:
         for row in result:
             rows.append(row)
@@ -274,6 +281,8 @@ def get_by_filter(db: Session = Depends(get_db), resources: Optional[str] = None
 
     if(resources):
         filters.append(Scan.reference.in_(resources.split(",")))
+    else:
+        filters.append(Scan.reference.ilike('%'))
 
     query = db.query(
         over(func.row_number(), order_by='started_at').label('index'),
