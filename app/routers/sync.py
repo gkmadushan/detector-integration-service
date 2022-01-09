@@ -72,9 +72,9 @@ def scan(db: Session = Depends(get_db)):
 
 
 @router.get("")
-def get(db: Session = Depends(get_db)):
+def get(score: Optional[str] = 4, db: Session = Depends(get_db)):
     filters = []
-    filters.append(Definition.score >= 4)
+    filters.append(Definition.score >= score)
 
     query = db.query(
         Definition.id,

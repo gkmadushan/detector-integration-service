@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import base64
 import io
 import sys
+import paramiko
 
 
 page_size = os.getenv('PAGE_SIZE')
@@ -46,7 +47,8 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
     scan_type_query = db.query(ScanType)
     if scan_type_query.count() > 0:
         id = uuid.uuid4().hex
-        # Store scan request
+
+        # Create the scan request in the DB in pending state
         scan_status = db.query(ScanStatu).filter(ScanStatu.code == "SCANNING").one()
         scan = Scan(
             id=id,
@@ -61,6 +63,48 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
         except IntegrityError as err:
             db.rollback()
 
+        # Assign Result file id
+        result_file = uuid.uuid4()
+
+        # Host
+        if details.ipv6:
+            host = details.ipv6
+        else:
+            host = details.ipv4
+
+        port = details.port
+        username = details.username
+
+        # Extract SSH keys and
+        try:
+            # retrive keys
+            response = requests.get(CREDENTIAL_SERVICE_URL+'/v1/credentials/'+details.secret_id)
+            response_json = json.loads(response.text)
+            encrypted_key = response_json['data']['encrypted_key']
+            key_file_path = "keys/"+str(id)+str(result_file)+".ppk"
+            key_file = open(key_file_path, "w")
+            key_file.write(encrypted_key)
+            key_file.close()
+            os.chmod(key_file_path, int('600', base=8))
+        except:
+            scan_status = db.query(ScanStatu).filter(ScanStatu.code == "INTERRUPTED").one()
+            scan.scan_status_id = scan_status.id
+            try:
+                db.add(scan)
+                db.commit()
+            except IntegrityError as err:
+                db.rollback()
+            raise HTTPException(status_code=422, detail="Unable to decrypt the SSH keys")
+
+        # Check if possible to connect
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            ssh.connect(host, username=username, key_filename=key_file_path, port=port)
+        except:
+            raise HTTPException(status_code=422, detail="Unable to connect to SSH on {}".format(host))
+
+        # Scan for each scan types in the system
         for scan_type in scan_type_query.all():
             # list of available commands based on the scan type
             scan_type_commands = {'OVAL': 'oval eval', 'XCCDF': 'xccdf eval'}
@@ -71,20 +115,12 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
             if dataset_query.count() > 0:
                 dataset = dataset_query.first()
             else:
-                # raise HTTPException(status_code=422, detail="Invalid OS or dataset not found")
+                # No Datasets found
                 continue
 
             # result types
             result_types = {'OVAL': '--results', 'XCCDF': '--results-arf'}
             result_type = result_types.get(scan_type.code, '--results')
-
-            if details.ipv6:
-                host = details.ipv6
-            else:
-                host = details.ipv4
-
-            port = details.port
-            username = details.username
 
             profile_command = ''
 
@@ -96,23 +132,8 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
                     if details.autofix == True:
                         profile_command = profile_command + ' --remediate'
                 else:
-                    # raise HTTPException(status_code=422, detail="Invalid Profile")
+                    # No XCCDF profiles to scan
                     continue
-
-            result_file = uuid.uuid4()
-
-            # retrive keys
-            response = requests.get(CREDENTIAL_SERVICE_URL+'/v1/credentials/'+details.secret_id)
-            try:
-                response_json = json.loads(response.text)
-            except:
-                return response.text
-            encrypted_key = response_json['data']['encrypted_key']
-            key_file_path = "keys/"+str(id)+str(result_file)+".ppk"
-            key_file = open(key_file_path, "w")
-            key_file.write(encrypted_key)
-            key_file.close()
-            os.chmod(key_file_path, int('600', base=8))
 
             process = subprocess.Popen(
                 f"export SSH_ADDITIONAL_OPTIONS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i {key_file_path}' && oscap-ssh {username}@{host} {port} {scan_command} {profile_command} {result_type} results/{result_file}.xml datasets/{dataset.file}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -120,13 +141,6 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
             console_log = ''
             for line in process.stdout.readlines():
                 console_log += line.decode("utf-8", "ignore").replace('\n', '').replace('\r\n', '').replace('\r', '')
-
-            return console_log
-
-            # delete key file
-            os.remove(key_file_path)
-
-            return f"results/{result_file}.xml"
 
             if os.path.exists(f"results/{result_file}.xml"):
                 # Scan completed
@@ -202,8 +216,10 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
                     db.commit()
                 except IntegrityError as err:
                     db.rollback()
-                # raise HTTPException(status_code=422, detail=console_log)
-                continue
+                    continue
+
+        # delete key file
+        os.remove(key_file_path)
     else:
         raise HTTPException(status_code=422, detail='No scan types')
 
