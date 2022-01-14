@@ -15,3 +15,4 @@ class OVALScanRequest(BaseModel):
     notify_to: Optional[List[str]]
     target_name: str
     target_url: str
+    created_by: Optional[str] = None

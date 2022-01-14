@@ -51,6 +51,7 @@ class Scan(Base):
     id = Column(UUID, primary_key=True)
     started_at = Column(DateTime)
     ended_at = Column(DateTime)
+    created_by = Column(String(255), nullable=True)
     scan_status_id = Column(ForeignKey('scan_status.id'), nullable=False)
     reference = Column(UUID, nullable=True)
 

@@ -37,7 +37,6 @@ RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
 router = APIRouter(
     prefix="/v1/scans",
     tags=["DetectorServiceAPIs"],
-    # dependencies=[Depends(get_token_header)],
     responses={404: {"description": "Not found"}},
 )
 
@@ -54,7 +53,8 @@ def scan(details: OVALScanRequest, db: Session = Depends(get_db)):
             id=id,
             started_at=datetime.now(),
             scan_status_id=scan_status.id,
-            reference=details.reference
+            reference=details.reference,
+            created_by=details.created_by
         )
 
         try:
@@ -345,7 +345,7 @@ def get_by_id(id: str, db: Session = Depends(get_db)):
     )
     results = query.where(
         and_(*filters)).join(Result._class).all()
-    if results == None:
+    if len(results) == 0:
         raise HTTPException(status_code=404, detail="Scan results not found")
     response = {
         "data": results

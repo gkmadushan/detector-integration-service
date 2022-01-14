@@ -34,7 +34,6 @@ RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
 router = APIRouter(
     prefix="/v1/sync",
     tags=["DetectorServiceSyncAPIs"],
-    # dependencies=[Depends(get_token_header)],
     responses={404: {"description": "Not found"}},
 )
 
